@@ -29,10 +29,17 @@ bool nighT = false;
 bool lighT = false;
 bool wemO = false;
 bool thermO = false;
+bool thermoSet = false;
+bool sleepTime = false;
 
 float pos;
 float tempC;
 float tempF;
+
+int timeSet;
+int setSleep;
+int thermoTemp;
+int tempSet;
 int mainSelect;
 int buttonOut = 23;
 int buttonIn = 22;
@@ -47,6 +54,8 @@ unsigned long lastMil;
 unsigned long lastMil2;
 unsigned long timeNow;
 unsigned long Interval = 200;
+
+String incomingValue = "";
 
 /*bool timerset = false;    //Boolean variables for the click functions and the timerSet() function
   bool doubleclick = false;
@@ -114,7 +123,11 @@ void mainFunc() {
     }
     screen();
     menu();
+    settings();
+    thermoset();
+    sleeptime();
     mode();
+    automatic();
     lastMil = currentMil;
   }
 }
@@ -250,7 +263,10 @@ void menu() {
         display.display();
       }
       if (Settings == mainSelect) {
+        menU = false;
         settingS = true;
+        pos = 0;
+        myEnc.write(0);
         display.clearDisplay();
         display.display();
       }
@@ -265,6 +281,282 @@ void menu() {
       }
 
     }
+  }
+}
+
+void settings() {
+  if (settingS == true) {
+    int ThermoSet = 0;
+    int SleepTime = 1;
+    int Back = 2;
+    if (c == 2) {
+      pos = myEnc.read();
+      if (pos >= 96) {
+        pos = 96;
+        myEnc.write(96);
+      } else if (pos <= 0) {
+        pos = 0;
+        myEnc.write(0);
+      }
+      mainSelect = map(pos, 0, 96, 0, 2);
+
+      if (ThermoSet == mainSelect) {
+        display.clearDisplay();
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+        display.setCursor(24, 0);            // Start at top-left corner
+        display.printf("-Set Thermostat");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);        // Draw white text
+        display.setCursor(24, 12);            // Start at top-left corner
+        display.printf("-Set Sleep Time");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);        // Draw white text
+        display.setCursor(24, 24);            // Start at top-left corner
+        display.printf("-Back");
+
+        display.display();
+
+      }
+      if (SleepTime == mainSelect) {
+        display.clearDisplay();
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(24, 0);            // Start at top-left corner
+        display.printf("-Set Thermostat");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+        display.setCursor(24, 12);            // Start at top-left corner
+        display.printf("-Set Sleep Time");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);        // Draw white text
+        display.setCursor(24, 24);            // Start at top-left corner
+        display.printf("-Back");
+
+        display.display();
+
+      }
+      if (Back == mainSelect) {
+        display.clearDisplay();
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(24, 0);            // Start at top-left corner
+        display.printf("-Set Thermostat");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(24, 12);            // Start at top-left corner
+        display.printf("-Set Sleep Time");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+        display.setCursor(24, 24);            // Start at top-left corner
+        display.printf("-Back");
+
+        display.display();
+
+      }
+
+    }
+    if (c == 3) {
+      if (ThermoSet == mainSelect) {
+        settingS = false;
+        thermoSet = true;
+        display.clearDisplay();
+        display.display();
+      }
+      if (SleepTime == mainSelect) {
+        settingS = false;
+        sleepTime = true;
+        pos = 0;
+        myEnc.write(0);
+        display.clearDisplay();
+        display.display();
+      }
+      if (Back == mainSelect) {
+        settingS = false;
+        menU = true;
+        c = 1;
+        pos = 0;
+        myEnc.write(0);
+        display.clearDisplay();
+        display.display();
+      }
+
+    }
+  }
+}
+
+void thermoset() {
+  if (thermoSet == true) {
+    if (c == 3) {
+      pos = myEnc.read();
+      if (pos >= 96) {
+        pos = 96;
+        myEnc.write(96);
+      } else if (pos <= 0) {
+        pos = 0;
+        myEnc.write(0);
+      }
+      tempSet = map(pos, 0, 96, 60, 85);
+
+      display.clearDisplay();
+
+      display.setTextSize(1);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(16, 0);            // Start at top-left corner
+      display.printf("Set Temperature");
+
+
+
+      display.setTextSize(2);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(34, 16);            // Start at top-left corner
+      display.printf("%i F", tempSet);
+
+      display.display();
+
+    }
+    if (c == 4) {
+      thermoTemp = tempSet;
+      display.clearDisplay();
+
+      display.setTextSize(1);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(16, 0);            // Start at top-left corner
+      display.printf("Themostat set to");
+
+
+
+      display.setTextSize(2);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(34, 16);            // Start at top-left corner
+      display.printf("%i F", thermoTemp);
+
+      display.display();
+
+      delay(1500);
+      thermoSet = false;
+      settingS = true;
+      c = 2;
+      pos = 0;
+      myEnc.write(0);
+      display.clearDisplay();
+      display.display();
+
+    }
+  }
+}
+
+void sleeptime() {
+  if (sleepTime == true) {
+    int m;
+    int s;
+    if (c == 3) {
+      pos = myEnc.read();
+      if (pos >= 96) {
+        pos = 96;
+        myEnc.write(96);
+      } else if (pos <= 0) {
+        pos = 0;
+        myEnc.write(0);
+      }
+      timeSet = map(pos, 0, 96, 0, 600);
+
+
+      if (timeSet / 60 < 1) {  //If the time is less than 60 seconds, set the interger m to zero
+        m = 0;                //else set m to 1
+      }
+      else {
+        m = timeSet / 60;
+      }
+
+      if (timeSet / 60 > 1) {             //if the time is greater than 1 minute,
+        s = timeSet % 60;
+      }
+      else if (timeSet >= 60) {      //if the time is set to a minute e.g. 5:00,
+        s = 0;                          //sets s to zero in the case of 5:60
+      }
+      else {                  //else sets s to i/1000
+        s = timeSet;
+      }
+
+      display.clearDisplay();
+
+      display.setTextSize(1);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(16, 0);            // Start at top-left corner
+      display.printf("Set Sleep Time");
+
+      display.setTextSize(2);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(34, 16);            // Start at top-left corner
+      if (s < 10) {
+        display.printf("%i:0%i", m, s);
+      } else {
+        display.printf("%i:%i", m, s);
+      }
+
+      display.display();
+
+
+    }
+    if (c == 4) {
+      setSleep = timeSet;
+
+      if (timeSet / 60 < 1) {  //If the time is less than 60 seconds, set the interger m to zero
+        m = 0;                //else set m to 1
+      }
+      else {
+        m = timeSet / 60;
+      }
+
+      if (timeSet / 60 > 1) {             //if the time is greater than 1 minute,
+        s = timeSet % 60;
+      }
+      else if (timeSet >= 60) {      //if the time is set to a minute e.g. 5:00,
+        s = 0;                          //sets s to zero in the case of 5:60
+      }
+      else {                  //else sets s to i/1000
+        s = timeSet;
+      }
+      display.clearDisplay();
+
+      display.setTextSize(1);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(16, 0);            // Start at top-left corner
+      display.printf("Sleep Time set to");
+
+
+
+      display.setTextSize(2);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(34, 16);            // Start at top-left corner
+      if (s < 10) {
+        display.printf("%i:0%i", m, s);
+      } else {
+        display.printf("%i:%i", m, s);
+      }
+      display.display();
+
+      delay(1500);
+      sleepTime = false;
+      settingS = true;
+      c = 2;
+      pos = 0;
+      myEnc.write(0);
+      display.clearDisplay();
+      display.display();
+
+    }
+
   }
 }
 
@@ -434,29 +726,32 @@ void mode() {
         display.display();
       }
       if (BF == mainSelect) {
-        bF = true;
         modE = false;
+        bF = true;
         display.clearDisplay();
         display.display();
       }
       if (Night == mainSelect) {
-        nighT = true;
         modE = false;
+        nighT = true;
         display.clearDisplay();
         display.display();
       }
       if (Light == mainSelect) {
         modE = false;
+        lighT = true;
         display.clearDisplay();
         display.display();
       }
       if (Wemo == mainSelect) {
         modE = false;
+        wemO = true;
         display.clearDisplay();
         display.display();
       }
       if (Thermo == mainSelect) {
         modE = false;
+        thermO = true;
         display.clearDisplay();
         display.display();
       }
@@ -473,6 +768,13 @@ void mode() {
   }
 }
 
+void automatic() {
+  if (autO == true) {
+    if (tempF > (thermoTemp+1) || tempF < (thermoTemp-1)){
+      
+    }
+  }
+}
 /*
   void longPressStart1() {
   doubleclick = false;
