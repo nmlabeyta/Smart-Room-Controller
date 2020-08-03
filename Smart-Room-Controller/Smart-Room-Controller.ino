@@ -16,6 +16,8 @@
 #include <Adafruit_BME280.h>
 #include "WEMO.h"
 #include <hue.h>
+#include <TimeLib.h>
+#include <DS1307RTC.h>
 
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -40,10 +42,8 @@ float pos;
 float tempC;
 float tempF;
 
-int timeSet;
 int setSleep;
 int thermoTemp;
-int tempSet;
 int mainSelect;
 int buttonOut = 23;
 int buttonIn = 22;
@@ -54,14 +54,16 @@ int yeaR;
 int c = 0;
 int wemo;
 unsigned long currentMil;
-unsigned long currentMil2;
+unsigned long nowMil;
 unsigned long lastMil;
-unsigned long lastMil2;
-unsigned long timeNow;
+unsigned long oldMil;
+unsigned long sec = 1000;
 unsigned long Interval = 200;
 
 
 String incomingValue = "";
+
+tmElements_t tm;
 
 /*bool timerset = false;    //Boolean variables for the click functions and the timerSet() function
   bool doubleclick = false;
@@ -108,10 +110,10 @@ void setup() {            //Starts the Serial monitor
   pinMode(buttonOut, OUTPUT);
   pinMode(buttonIn, INPUT);
 
-  timeNow = 3780000;
+  /*timeNow = 3780000;
   daY = 1;
   montH = 8;
-  yeaR = 2020;
+  yeaR = 2020;*/
 
    // print your local IP address:
   Serial.print("My IP address: ");
@@ -124,6 +126,11 @@ void setup() {            //Starts the Serial monitor
 }
 
 void loop() {
+  nowMil = millis();
+if(nowMil - oldMil >= sec){
+  rtc();
+  oldMil = nowMil;
+}
   tempC = bme.readTemperature();
   tempF = map(tempC, -273.15, 1000.0, -459.67, 1832.0);
 
@@ -141,6 +148,7 @@ void mainFunc() {
     if (buttoN == HIGH) {
       c++;
     }
+    
     screen();
     menu();
     settings();
@@ -148,8 +156,11 @@ void mainFunc() {
     sleeptime();
     mode();
     automatic();
+    Wakeup();
+    goodnight();
     light();
     Wemo();
+    thermoStat();
     lastMil = currentMil;
   }
 }
@@ -161,12 +172,33 @@ void screen() {
     display.setTextSize(1);             // Normal 1:1 pixel scale
     display.setTextColor(SSD1306_WHITE);        // Draw white text
     display.setCursor(0, 0);            // Start at top-left corner
-    display.printf("%u:%u AM", timeNow / 360000, timeNow / 126000);
+    if(tm.Hour<12){
+      if(tm.Hour >=0 && tm.Hour < 10){
+        if(tm.Minute >=0 && tm.Minute < 10){
+    display.printf("0%i:0%i AM",tm.Hour, tm.Minute + 1);
+      }
+      else{
+        display.printf("0%i:%i AM",tm.Hour, tm.Minute + 1);
+      }
+      }
+      else{
+        display.printf("%i:%i AM",tm.Hour, tm.Minute + 1);
+      }
+    }
+    else if(tm.Hour >= 12){
+      
+        if(tm.Minute >=0 && tm.Minute < 10){
+    display.printf("%i:0%i PM",tm.Hour - 20, tm.Minute + 1);
+      }
+      else{
+        display.printf("%i:%i PM",tm.Hour - 20, tm.Minute + 1);
+      }
+    }
 
     display.setTextSize(1);             // Normal 1:1 pixel scale
     display.setTextColor(SSD1306_WHITE);        // Draw white text
     display.setCursor(80, 0);           // Start at top-left corner
-    display.printf("%i/%i/%i", montH, daY, yeaR);
+    display.printf("%i/%i/%i",tm.Month,tm.Day,tmYearToCalendar(tm.Year));
 
     display.setTextSize(1);             // Normal 1:1 pixel scale
     display.setTextColor(SSD1306_WHITE);        // Draw white text
@@ -420,6 +452,7 @@ void settings() {
 
 void thermoset() {
   if (thermoSet == true) {
+    static int tempSet;
     if (c == 3) {
       pos = myEnc.read();
       if (pos >= 96) {
@@ -455,7 +488,7 @@ void thermoset() {
       display.setTextSize(1);             // Normal 1:1 pixel scale
       display.setTextColor(SSD1306_WHITE);  // Draw white text
       display.setCursor(16, 0);            // Start at top-left corner
-      display.printf("Themostat set to");
+      display.printf("Thermostat set to");
 
 
 
@@ -481,6 +514,7 @@ void thermoset() {
 
 void sleeptime() {
   if (sleepTime == true) {
+    static int timeSet;
     int m;
     int s;
     if (c == 3) {
@@ -804,6 +838,137 @@ void automatic() {
   }
 }
 
+void Wakeup(){
+  if(bF == true){
+    unsigned long currentMill;
+    unsigned long lastMilll = 10000;
+    unsigned long lastMill;
+    int sleepT = 16000;
+    int sec = 600;
+    int i;
+    int l;
+    if(c == 3){
+
+      lastMilll = millis();;
+      
+      
+     while(millis() - lastMilll <= sleepT){
+
+
+      for(i = 1; i < 256; i= i + 85){
+        
+        for(l = 1; l<5;l++){
+        currentMill = millis();
+        if(currentMill - lastMill>= sec){
+  
+        display.clearDisplay();
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);        // Draw white text
+        display.setCursor(34, 12);            // Start at top-left corner
+        display.printf("!!WAKE UP!!");
+
+        display.display();
+
+        delay(200); 
+
+        display.clearDisplay();
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+        display.setCursor(34, 12);            // Start at top-left corner
+        display.printf("!!WAKE UP!!");
+
+         display.display();
+
+        delay(200);
+           
+        setHue(l, true,HueRainbow[2], i);
+            getHue(l);
+          }
+          lastMill = currentMill;
+        }
+      }
+     
+   }
+    for(l = 1; l <5; l++){
+      setHue(l, false,HueRainbow[0], 0);
+      getHue(l);
+    }
+    bF = false;
+    modE = true;
+    c = 2;
+      pos = 0;
+      myEnc.write(0);
+      display.clearDisplay();
+      display.display();
+    }
+  }
+}
+
+void goodnight(){
+  if(nighT == true){
+    unsigned long currentMill;
+    unsigned long lastMilll = 10000;
+    unsigned long lastMill;
+    int sleepT = 1600;
+    int fourSec = 3600;
+    int i;
+    int l;
+    if(c == 3){
+
+      lastMilll = millis();;
+      
+      
+     while(millis() - lastMilll <= sleepT){
+
+
+      for(i = 1; i < 256; i= i + 85){
+        currentMill = millis();
+        if(currentMill - lastMill>= fourSec){
+        for(l = 1; l<5;l++){
+  
+        display.clearDisplay();
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);        // Draw white text
+        display.setCursor(34, 12);            // Start at top-left corner
+        display.printf("~Good Night~");
+
+        display.display();
+
+        delay(200); 
+
+        display.clearDisplay();
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+        display.setCursor(34, 12);            // Start at top-left corner
+        display.printf("~Good Night~");
+
+         display.display();
+
+        delay(200);
+           
+        setHue(l, true,HueRainbow[0], i);
+            getHue(l);
+          }
+          lastMill = currentMill;
+        }
+      }
+     
+   }
+    for(l = 1; l <5; l++){
+      setHue(l, false,HueRainbow[0], 0);
+      getHue(l);
+    }
+    nighT = false;
+    modE = true;
+    c = 2;
+      pos = 0;
+      myEnc.write(0);
+      display.clearDisplay();
+      display.display();
+    }
+  }
+}
+
 void light() {
 
   if (lighT == true) {
@@ -1114,6 +1279,93 @@ void Wemo() {
 
     }
   }
+}
+
+void thermoStat(){
+  if(thermO == true){
+     static int thermoset;
+      static int setTemp;
+      static int i;
+      static int p = 0;
+    if (c == 3) {
+     
+      pos = myEnc.read();
+      if (pos >= 96) {
+        pos = 96;
+        myEnc.write(96);
+      } else if (pos <= 0) {
+        pos = 0;
+        myEnc.write(0);
+      }
+      setTemp = map(pos, 0, 96, 60.0, 85.0);
+
+      display.clearDisplay();
+
+      display.setTextSize(1);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(16, 0);            // Start at top-left corner
+      display.printf("Set Temperature");
+
+
+
+      display.setTextSize(2);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(34, 16);            // Start at top-left corner
+      display.printf("%i F", setTemp);
+
+      display.display();
+
+    }
+    if (c == 4) {
+      thermoset = setTemp;
+      if(p == 0){
+      display.clearDisplay();
+
+      display.setTextSize(1);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(16, 0);            // Start at top-left corner
+      display.printf("Thermostat set to");
+
+
+
+      display.setTextSize(2);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(34, 16);            // Start at top-left corner
+      display.printf("%i F", thermoset);
+
+      display.display();
+      delay(1500);
+      p=1;
+      }
+      
+      if(tempF> thermoSet + 1){
+        for(i = 2;i<4;i++){
+         weMO.switchON(i);
+        }
+      }
+      else{
+        for(i = 2;i<4;i++){
+         weMO.switchOFF(i);
+        }
+      }
+    }
+    if(c == 5){
+      thermO = false;
+      modE = true;
+      c = 2;
+      pos = 0;
+      myEnc.write(0);
+      display.clearDisplay();
+      display.display();
+
+    }
+    
+  }
+}
+
+void rtc() { 
+  RTC.read(tm);
+  
 }
 
 /*
