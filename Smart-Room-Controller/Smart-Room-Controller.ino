@@ -13,6 +13,10 @@
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_BME280.h>
 #include <Encoder.h>
+//#include <hue.h>
+//#include <WEMO.h>
+#include <Ethernet.h>
+#include <mac.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
@@ -48,12 +52,22 @@ int daY;
 int montH;
 int yeaR;
 int c = 0;
+int wemo;
 unsigned long currentMil;
 unsigned long currentMil2;
 unsigned long lastMil;
 unsigned long lastMil2;
 unsigned long timeNow;
 unsigned long Interval = 200;
+
+int HueRed = 0;
+int HueOrange = 5000;
+int HueYellow = 10000;
+int HueGreen = 22500;
+int HueBlue = 45000;
+int HueIndigo = 47500;
+int HueViolet = 50000;
+int HueRainbow[] = {HueRed, HueOrange, HueYellow, HueGreen, HueBlue, HueIndigo, HueViolet};
 
 String incomingValue = "";
 
@@ -76,6 +90,7 @@ String incomingValue = "";
 Adafruit_BME280 bme;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 Encoder myEnc(5, 6);
+//WEMO Wemo(wemo);
 
 
 void setup() {            //Starts the Serial monitor
@@ -128,6 +143,8 @@ void mainFunc() {
     sleeptime();
     mode();
     automatic();
+    light();
+    Wemo();
     lastMil = currentMil;
   }
 }
@@ -259,6 +276,8 @@ void menu() {
       if (Mode == mainSelect) {
         menU = false;
         modE = true;
+        pos = 0;
+        myEnc.write(0);
         display.clearDisplay();
         display.display();
       }
@@ -740,12 +759,16 @@ void mode() {
       if (Light == mainSelect) {
         modE = false;
         lighT = true;
+        pos = 0;
+        myEnc.write(0);
         display.clearDisplay();
         display.display();
       }
       if (Wemo == mainSelect) {
         modE = false;
         wemO = true;
+        pos = 0;
+        myEnc.write(0);
         display.clearDisplay();
         display.display();
       }
@@ -770,11 +793,324 @@ void mode() {
 
 void automatic() {
   if (autO == true) {
-    if (tempF > (thermoTemp+1) || tempF < (thermoTemp-1)){
-      
+    if (tempF > (thermoTemp + 1) || tempF < (thermoTemp - 1)) {
+
     }
   }
 }
+
+void light() {
+
+  if (lighT == true) {
+    static int onOff;
+    static int lightState;
+    static int lightSelect;
+    static int lightN;
+    static int color;
+    static int i;
+    static int intensity;
+    static int hueColor;
+    static int brightNess;
+
+    pos = myEnc.read();
+    if (pos >= 96) {
+      pos = 96;
+      myEnc.write(96);
+    } else if (pos <= 0) {
+      pos = 0;
+      myEnc.write(0);
+    }
+    if (c == 3) {
+      lightSelect = map(pos, 0, 96, 1, 5);
+
+      display.clearDisplay();
+
+      display.setTextSize(1);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(16, 0);            // Start at top-left corner
+      display.printf("Selected Light");
+
+      display.setTextSize(2);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(48, 16);            // Start at top-left corner
+      if (lightSelect < 5) {
+        display.printf("%i", lightSelect);
+      }
+      else {
+        display.printf("All");
+      }
+
+      display.display();
+    }
+    if (c == 4) {
+      lightN = lightSelect;
+      int On = 1;
+      int OfF = 0;
+
+      onOff = map(pos, 0, 96, 0, 1);
+
+      display.clearDisplay();
+
+      display.setTextSize(1);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(16, 0);            // Start at top-left corner
+      display.printf("Turn Light");
+
+
+
+      display.setTextSize(2);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(34, 16);            // Start at top-left corner
+      if (On == onOff) {
+        display.printf("ON");
+      }
+      else if (OfF == onOff) {
+        display.printf("OFF");
+      }
+      display.display();
+
+    }
+    if (c == 5) {
+      lightState = onOff;
+
+      if (lightState == 0) {
+        if (lightN < 5) {
+          //setHue(lightN, false, 0, 0);
+          //getHue(lightN);
+          lighT = false;
+          modE = true;
+          c = 2;
+          pos = 0;
+          myEnc.write(0);
+          display.clearDisplay();
+          display.display();
+        }
+        else if (lightN == 5) {
+          for (i = 1; i < 5; i++) {
+            //setHue(i, false, 0, 0);
+            //getHue(i);
+          }
+          lighT = false;
+          modE = true;
+          c = 2;
+          pos = 0;
+          myEnc.write(0);
+          display.clearDisplay();
+          display.display();
+        }
+      }
+      else {
+
+        color = map(pos, 0, 96, 0, 6);
+
+        display.clearDisplay();
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(16, 0);            // Start at top-left corner
+        display.printf("Light Color");
+
+
+
+        display.setTextSize(2);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(34, 16);            // Start at top-left corner
+        if (color == 0) {
+          display.printf("RED");
+        } else if (color == 1) {
+          display.printf("ORANGE");
+        } else if (color == 2) {
+          display.printf("YELLOW");
+        } else if (color == 3) {
+          display.printf("GREEN");
+        } else if (color == 4) {
+          display.printf("BLUE");
+        } else if (color == 5) {
+          display.printf("INDIGO");
+        } else if (color == 6) {
+          display.printf("VIOLET");
+        }
+        display.display();
+
+      }
+    }
+
+    if (c == 6) {
+      hueColor = color;
+
+      intensity = map(pos, 0, 96, 0, 255);
+
+      display.clearDisplay();
+
+      display.setTextSize(1);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(16, 0);            // Start at top-left corner
+      display.printf("Brightness");
+
+
+
+      display.setTextSize(2);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(34, 16);            // Start at top-left corner
+      if (intensity <= 86) {
+        display.printf("LOW");
+      }
+      else if (intensity > 86 && intensity <= 171 ) {
+        display.printf("MEDIUM");
+      }
+      else if (intensity > 171) {
+        display.printf("HIGH");
+      }
+      display.display();
+
+    }
+    if (c == 7) {
+      brightNess = intensity;
+
+      if (lightN < 5) {
+        if (brightNess <= 86) {
+          //setHue(lightN, true,HueRainbow[hueColor] , 86);
+          //getHue(lightN);
+        }
+        else if (brightNess > 86 && brightNess <= 171 ) {
+          //setHue(lightN, true,HueRainbow[hueColor] , 171);
+          //getHue(lightN);
+        }
+        else if (brightNess > 171) {
+          //setHue(lightN, true,HueRainbow[hueColor] , 255);
+          //getHue(lightN);
+        }
+      }
+      else if (lightN == 5) {
+        if (brightNess <= 86) {
+          for (i = 1; i < 5; i++) {
+            //setHue(i, true,HueRainbow[hueColor], 86);
+            //getHue(i);
+          }
+        }
+        else if (brightNess > 86 && brightNess <= 171 ) {
+          for (i = 1; i < 5; i++) {
+            //setHue(i, true,HueRainbow[hueColor], 171);
+            //getHue(i);
+          }
+        }
+        else if (brightNess > 171) {
+          for (i = 1; i < 5; i++) {
+            //setHue(i, true,HueRainbow[hueColor], 255);
+            //getHue(i);
+          }
+        }
+      }
+
+      lighT = false;
+      modE = true;
+      c = 2;
+      pos = 0;
+      myEnc.write(0);
+      display.clearDisplay();
+      display.display();
+    }
+  }
+}
+
+void Wemo() {
+  if (wemO == true) {
+    static int wemoSelect;
+    static int onOff;
+    static int wemoState;
+    static int i;
+
+    pos = myEnc.read();
+    if (pos >= 96) {
+      pos = 96;
+      myEnc.write(96);
+    } else if (pos <= 0) {
+      pos = 0;
+      myEnc.write(0);
+    }
+    if (c == 3) {
+      wemoSelect = map(pos, 0, 96, 0, 4);
+
+      display.clearDisplay();
+
+      display.setTextSize(1);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(16, 0);            // Start at top-left corner
+      display.printf("Selected Wemo");
+
+      display.setTextSize(2);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(48, 16);            // Start at top-left corner
+      if (wemoSelect < 4) {
+        display.printf("%i", wemoSelect);
+      }
+      else {
+        display.printf("All");
+      }
+
+      display.display();
+    }
+    if (c == 4) {
+      int On = 1;
+      int OfF = 0;
+      wemo = wemoSelect;
+
+      onOff = map(pos, 0, 96, 0, 1);
+
+      display.clearDisplay();
+
+      display.setTextSize(1);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(16, 0);            // Start at top-left corner
+      display.printf("Turn Wemo");
+
+      display.setTextSize(2);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);  // Draw white text
+      display.setCursor(34, 16);            // Start at top-left corner
+      if (On == onOff) {
+        display.printf("ON");
+      }
+      else if (OfF == onOff) {
+        display.printf("OFF");
+      }
+      display.display();
+    }
+    if (c == 5) {
+      wemoState = onOff;
+
+      if (wemoState == 0) {
+        if (wemo < 4) {
+          //Wemo.switchOFF(wemo);
+        }
+        else if (wemo == 4) {
+          for (i = 0; i <= 3; i++) {
+            //Wemo.switchOFF(i);
+          }
+        }
+      }
+      else {
+        if (wemo < 4) {
+          //Wemo.switchON(wemo);
+        }
+        else if (wemo == 4) {
+          for (i = 0; i <= 3; i++) {
+            //Wemo.switchON(i);
+          }
+        }
+      }
+
+      wemO = false;
+      modE = true;
+      c = 2;
+      pos = 0;
+      myEnc.write(0);
+      display.clearDisplay();
+      display.display();
+
+    }
+  }
+}
+
 /*
   void longPressStart1() {
   doubleclick = false;
