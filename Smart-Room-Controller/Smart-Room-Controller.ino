@@ -23,6 +23,13 @@ bool autO = true;
 bool screeN = true;
 bool menU = false;
 bool modE = false;
+bool settingS = false;
+bool bF = false;
+bool nighT = false;
+bool lighT = false;
+bool wemO = false;
+bool thermO = false;
+
 float pos;
 float tempC;
 float tempF;
@@ -33,8 +40,11 @@ int buttoN;
 int daY;
 int montH;
 int yeaR;
+int c = 0;
 unsigned long currentMil;
+unsigned long currentMil2;
 unsigned long lastMil;
+unsigned long lastMil2;
 unsigned long timeNow;
 unsigned long Interval = 200;
 
@@ -85,7 +95,6 @@ void setup() {            //Starts the Serial monitor
 }
 
 void loop() {
-  pos = myEnc.read();
   tempC = bme.readTemperature();
   tempF = map(tempC, -273.15, 1000.0, -459.67, 1832.0);
 
@@ -93,66 +102,71 @@ void loop() {
   buttoN = digitalRead(buttonIn);
 
   mainFunc();
+
 }
 
-void mainFunc(){
-  screen();
-  menu();
+void mainFunc() {
+  currentMil = millis();
+
+  if (currentMil - lastMil >= Interval) {
+    if (buttoN == HIGH) {
+      c++;
+    }
+    screen();
+    menu();
+    mode();
+    lastMil = currentMil;
+  }
 }
 
 void screen() {
   if (screeN == true) {
-    if (buttoN == LOW) {
-      display.clearDisplay();
+    display.clearDisplay();
 
+    display.setTextSize(1);             // Normal 1:1 pixel scale
+    display.setTextColor(SSD1306_WHITE);        // Draw white text
+    display.setCursor(0, 0);            // Start at top-left corner
+    display.printf("%u:%u AM", timeNow / 360000, timeNow / 126000);
+
+    display.setTextSize(1);             // Normal 1:1 pixel scale
+    display.setTextColor(SSD1306_WHITE);        // Draw white text
+    display.setCursor(80, 0);           // Start at top-left corner
+    display.printf("%i/%i/%i", montH, daY, yeaR);
+
+    display.setTextSize(1);             // Normal 1:1 pixel scale
+    display.setTextColor(SSD1306_WHITE);        // Draw white text
+    display.setCursor(44, 12);            // Start at top-left corner
+    display.printf("%0.2f F", tempF);
+
+    if (autO == true) {
       display.setTextSize(1);             // Normal 1:1 pixel scale
       display.setTextColor(SSD1306_WHITE);        // Draw white text
-      display.setCursor(0, 0);            // Start at top-left corner
-      display.printf("%u:%u AM", timeNow / 360000, timeNow / 126000);
-
-      display.setTextSize(1);             // Normal 1:1 pixel scale
-      display.setTextColor(SSD1306_WHITE);        // Draw white text
-      display.setCursor(80, 0);           // Start at top-left corner
-      display.printf("%i/%i/%i", montH, daY, yeaR);
-
-      display.setTextSize(1);             // Normal 1:1 pixel scale
-      display.setTextColor(SSD1306_WHITE);        // Draw white text
-      display.setCursor(44, 12);            // Start at top-left corner
-      display.printf("%0.2f F", tempF);
-
-      if (autO == true) {
-        display.setTextSize(1);             // Normal 1:1 pixel scale
-        display.setTextColor(SSD1306_WHITE);        // Draw white text
-        display.setCursor(36, 24);            // Start at top-left corner
-        display.printf("Mode:Auto");
-      }
-      else {
-        display.setTextSize(1);             // Normal 1:1 pixel scale
-        display.setTextColor(SSD1306_WHITE);        // Draw white text
-        display.setCursor(34, 24);            // Start at top-left corner
-        display.printf("Mode:Manual");
-      }
-      display.display();
+      display.setCursor(36, 24);            // Start at top-left corner
+      display.printf("Mode:Auto");
     }
-    if (buttoN == HIGH) {
-      screeN = false;
-      menU = true;
-      display.clearDisplay();
-      display.display();
+    else {
+      display.setTextSize(1);             // Normal 1:1 pixel scale
+      display.setTextColor(SSD1306_WHITE);        // Draw white text
+      display.setCursor(34, 24);            // Start at top-left corner
+      display.printf("Mode:Manual");
     }
+    display.display();
+  }
+  if (c == 1) {
+    autO = false;
+    screeN = false;
+    menU = true;
+    display.clearDisplay();
+    display.display();
   }
 }
 
 void menu() {
-  int Mode = 0;
-  int Settings = 1;
-  int Back = 2;
-
-  currentMil = millis();
-
-  if(currentMil - lastMil >= Interval){
   if (menU == true) {
-    while (buttoN ==  LOW) {
+    int Mode = 0;
+    int Settings = 1;
+    int Back = 2;
+    if (c == 1) {
       pos = myEnc.read();
       if (pos >= 96) {
         pos = 96;
@@ -226,18 +240,237 @@ void menu() {
         display.display();
 
       }
-     
-    }
-     if (buttoN == HIGH) {
-      menU = false;
-      modE = true;
-      display.clearDisplay();
-      display.display();
-    }
-  }
-  lastMil = currentMil;
-  }
 
+    }
+    if (c == 2) {
+      if (Mode == mainSelect) {
+        menU = false;
+        modE = true;
+        display.clearDisplay();
+        display.display();
+      }
+      if (Settings == mainSelect) {
+        settingS = true;
+        display.clearDisplay();
+        display.display();
+      }
+      if (Back == mainSelect) {
+        menU = false;
+        screeN = true;
+        c = 0;
+        pos = 0;
+        myEnc.write(0);
+        display.clearDisplay();
+        display.display();
+      }
+
+    }
+  }
+}
+
+void mode() {
+  if (modE == true) {
+    int Auto = 0;
+    int BF = 1;
+    int Night = 2;
+    int Light = 3;
+    int Wemo = 4;
+    int Thermo = 5;
+    int Back = 6;
+    if (c == 2) {
+      pos = myEnc.read();
+      if (pos >= 96) {
+        pos = 96;
+        myEnc.write(96);
+      } else if (pos <= 0) {
+        pos = 0;
+        myEnc.write(0);
+      }
+      mainSelect = map(pos, 0, 96, 0, 6);
+
+      if (Auto == mainSelect) {
+        display.clearDisplay();
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+        display.setCursor(34, 0);            // Start at top-left corner
+        display.printf("-Auto");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);        // Draw white text
+        display.setCursor(34, 12);            // Start at top-left corner
+        display.printf("-BF");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);        // Draw white text
+        display.setCursor(34, 24);            // Start at top-left corner
+        display.printf("-Night");
+
+        display.display();
+
+      }
+      if (BF == mainSelect) {
+        display.clearDisplay();
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(34, 0);            // Start at top-left corner
+        display.printf("-Auto");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+        display.setCursor(34, 12);            // Start at top-left corner
+        display.printf("-BF");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);        // Draw white text
+        display.setCursor(34, 24);            // Start at top-left corner
+        display.printf("-Night");
+
+        display.display();
+
+      }
+      if (Night == mainSelect) {
+        display.clearDisplay();
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(34, 0);            // Start at top-left corner
+        display.printf("-Auto");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(34, 12);            // Start at top-left corner
+        display.printf("-BF");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+        display.setCursor(34, 24);            // Start at top-left corner
+        display.printf("-Night");
+
+        display.display();
+
+      }
+      if (Light == mainSelect) {
+        display.clearDisplay();
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+        display.setCursor(34, 0);            // Start at top-left corner
+        display.printf("-Light");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(34, 12);            // Start at top-left corner
+        display.printf("-Wemo");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(34, 24);            // Start at top-left corner
+        display.printf("-Thermo");
+
+        display.display();
+
+      }
+
+      if (Wemo == mainSelect) {
+        display.clearDisplay();
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(34, 0);            // Start at top-left corner
+        display.printf("-Light");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+        display.setCursor(34, 12);            // Start at top-left corner
+        display.printf("-Wemo");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(34, 24);            // Start at top-left corner
+        display.printf("-Thermo");
+
+        display.display();
+      }
+      if (Thermo == mainSelect) {
+        display.clearDisplay();
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(34, 0);            // Start at top-left corner
+        display.printf("-Light");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(34, 12);            // Start at top-left corner
+        display.printf("-Wemo");
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+        display.setCursor(34, 24);            // Start at top-left corner
+        display.printf("-Thermo");
+
+        display.display();
+
+      }
+      if (Back == mainSelect) {
+        display.clearDisplay();
+
+        display.setTextSize(1);             // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+        display.setCursor(34, 0);            // Start at top-left corner
+        display.printf("-Back");
+
+        display.display();
+
+      }
+    }
+    if (c == 3) {
+      if (Auto == mainSelect) {
+        modE = false;
+        autO = true;
+        display.clearDisplay();
+        display.display();
+      }
+      if (BF == mainSelect) {
+        bF = true;
+        modE = false;
+        display.clearDisplay();
+        display.display();
+      }
+      if (Night == mainSelect) {
+        nighT = true;
+        modE = false;
+        display.clearDisplay();
+        display.display();
+      }
+      if (Light == mainSelect) {
+        modE = false;
+        display.clearDisplay();
+        display.display();
+      }
+      if (Wemo == mainSelect) {
+        modE = false;
+        display.clearDisplay();
+        display.display();
+      }
+      if (Thermo == mainSelect) {
+        modE = false;
+        display.clearDisplay();
+        display.display();
+      }
+      if (Back == mainSelect) {
+        modE = false;
+        menU = true;
+        c = 1;
+        pos = 0;
+        myEnc.write(0);
+        display.clearDisplay();
+        display.display();
+      }
+    }
+  }
 }
 
 /*
