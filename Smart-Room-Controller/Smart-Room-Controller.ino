@@ -6,17 +6,17 @@
 */
 
 
-
+#include <Encoder.h>
 #include <SPI.h>
+#include <Ethernet.h>
+#include <mac.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_BME280.h>
-#include <Encoder.h>
-//#include <hue.h>
-//#include <WEMO.h>
-#include <Ethernet.h>
-#include <mac.h>
+#include "WEMO.h"
+#include <hue.h>
+
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
@@ -60,14 +60,6 @@ unsigned long lastMil2;
 unsigned long timeNow;
 unsigned long Interval = 200;
 
-int HueRed = 0;
-int HueOrange = 5000;
-int HueYellow = 10000;
-int HueGreen = 22500;
-int HueBlue = 45000;
-int HueIndigo = 47500;
-int HueViolet = 50000;
-int HueRainbow[] = {HueRed, HueOrange, HueYellow, HueGreen, HueBlue, HueIndigo, HueViolet};
 
 String incomingValue = "";
 
@@ -90,12 +82,16 @@ String incomingValue = "";
 Adafruit_BME280 bme;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 Encoder myEnc(5, 6);
-//WEMO Wemo(wemo);
+IPAddress ip(192, 168, 1, 19); // Teensy 
+WEMO weMO(wemo);
 
 
 void setup() {            //Starts the Serial monitor
   Serial.begin(9600);
   while (!Serial);
+
+  Ethernet.begin(mac, ip);
+  Serial.println("connecting...");
 
   status = bme.begin(0x76);
   Serial.printf("Initializing BME...\n");
@@ -116,6 +112,15 @@ void setup() {            //Starts the Serial monitor
   daY = 1;
   montH = 8;
   yeaR = 2020;
+
+   // print your local IP address:
+  Serial.print("My IP address: ");
+  for (byte thisByte = 0; thisByte < 4; thisByte++) {
+    // print the value of each byte of the IP address:
+    Serial.print(Ethernet.localIP()[thisByte], DEC);
+    Serial.print("."); 
+  }
+  Serial.println();
 }
 
 void loop() {
@@ -875,8 +880,8 @@ void light() {
 
       if (lightState == 0) {
         if (lightN < 5) {
-          //setHue(lightN, false, 0, 0);
-          //getHue(lightN);
+          setHue(lightN, false, 0, 0);
+          getHue(lightN);
           lighT = false;
           modE = true;
           c = 2;
@@ -887,8 +892,8 @@ void light() {
         }
         else if (lightN == 5) {
           for (i = 1; i < 5; i++) {
-            //setHue(i, false, 0, 0);
-            //getHue(i);
+            setHue(i, false, 0, 0);
+            getHue(i);
           }
           lighT = false;
           modE = true;
@@ -969,35 +974,35 @@ void light() {
 
       if (lightN < 5) {
         if (brightNess <= 86) {
-          //setHue(lightN, true,HueRainbow[hueColor] , 86);
-          //getHue(lightN);
+          setHue(lightN,true,HueRainbow[hueColor] , 86);
+          getHue(lightN);
         }
         else if (brightNess > 86 && brightNess <= 171 ) {
-          //setHue(lightN, true,HueRainbow[hueColor] , 171);
-          //getHue(lightN);
+          setHue(lightN, true,HueRainbow[hueColor] , 171);
+          getHue(lightN);
         }
         else if (brightNess > 171) {
-          //setHue(lightN, true,HueRainbow[hueColor] , 255);
-          //getHue(lightN);
+          setHue(lightN, true,HueRainbow[hueColor] , 255);
+          getHue(lightN);
         }
       }
       else if (lightN == 5) {
         if (brightNess <= 86) {
           for (i = 1; i < 5; i++) {
-            //setHue(i, true,HueRainbow[hueColor], 86);
-            //getHue(i);
+            setHue(i, true,HueRainbow[hueColor], 86);
+            getHue(i);
           }
         }
         else if (brightNess > 86 && brightNess <= 171 ) {
           for (i = 1; i < 5; i++) {
-            //setHue(i, true,HueRainbow[hueColor], 171);
-            //getHue(i);
+            setHue(i, true,HueRainbow[hueColor], 171);
+            getHue(i);
           }
         }
         else if (brightNess > 171) {
           for (i = 1; i < 5; i++) {
-            //setHue(i, true,HueRainbow[hueColor], 255);
-            //getHue(i);
+            setHue(i, true,HueRainbow[hueColor], 255);
+            getHue(i);
           }
         }
       }
@@ -1080,21 +1085,21 @@ void Wemo() {
 
       if (wemoState == 0) {
         if (wemo < 4) {
-          //Wemo.switchOFF(wemo);
+          weMO.switchOFF(wemo);
         }
         else if (wemo == 4) {
           for (i = 0; i <= 3; i++) {
-            //Wemo.switchOFF(i);
+            weMO.switchOFF(i);
           }
         }
       }
       else {
         if (wemo < 4) {
-          //Wemo.switchON(wemo);
+          weMO.switchON(wemo);
         }
         else if (wemo == 4) {
           for (i = 0; i <= 3; i++) {
-            //Wemo.switchON(i);
+            weMO.switchON(i);
           }
         }
       }
