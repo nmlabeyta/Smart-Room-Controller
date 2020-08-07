@@ -5,7 +5,7 @@ EthernetClient WemoClient;
 int wemoPort = 49153;
 int _wemo;
 //char wemoIP[12];
-char *wemoIP[12] = {"192.168.1.13","192.168.1.7","192.168.1.8","192.168.1.6"};
+char *wemoIP[12] = {"192.168.1.4","192.168.1.6","192.168.1.8","192.168.1.7"};
 
 public:
   WEMO(int wemo){
