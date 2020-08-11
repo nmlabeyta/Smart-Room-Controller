@@ -40,11 +40,8 @@ bool thermoSet = false;
 bool sleepTime = false;
 bool morning = true;
 bool evening = false;
-
 float pos;
 float tempF;
-
-
 int thermoTemp = 74;
 int mainSelect;
 int buttonOut = 22;
@@ -52,6 +49,7 @@ int buttonIn = 21;
 int buttoN;
 int counter = 0;
 int wemo;
+int p = 0;
 unsigned int setSleep = 10000;
 unsigned int nowMil;
 unsigned int sec;
@@ -60,12 +58,12 @@ unsigned long currentMil;
 unsigned long lastMil;
 unsigned long Interval = 200;
 
-Adafruit_NeoPixel pixel(14,20, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixel(14, 20, NEO_GRB + NEO_KHZ800);
 tmElements_t tm;
 Adafruit_BME280 bme;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 Encoder myEnc(6, 7);
-IPAddress ip(192, 168, 1, 19); // Teensy
+IPAddress ip(192, 168, 1, 15); // Teensy
 WEMO weMO(wemo);
 
 
@@ -73,22 +71,22 @@ void setup() {            //Starts the Serial monitor
   Serial.begin(9600);
   while (!Serial);
 
-  Ethernet.begin(mac, ip);
+  Ethernet.begin(mac,ip);       //Starts the Ethernet Jack
   Serial.println("connecting...");
 
-  status = bme.begin(0x76);
+  status = bme.begin(0x76); //Starts the BME280 Senso
   Serial.printf("Initializing BME...\n");
 
   if (!status) {
     Serial.printf("BME initialization has failed\n");
   }
 
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { //Starts and addresses 0x3C for 128x32 OLED
     Serial.println(F("SSD1306 allocation failed"));
     for (;;); // Don't proceed, loop forever
   }
 
-  pinMode(buttonOut, OUTPUT);
+  pinMode(buttonOut, OUTPUT);         //Button Read 
   pinMode(buttonIn, INPUT_PULLUP);
 
   // print your local IP address:
@@ -99,40 +97,62 @@ void setup() {            //Starts the Serial monitor
     Serial.print(".");
   }
   Serial.println();
+  
+  pixel.begin();  //Starts the NeoPixels
+  pixel.show();
 }
 
 void loop() {
-  nowMil = millis();
 
-  if (nowMil - oldMil >= sec) {
-    rtc();
-    oldMil = nowMil;
-  }
-  temp();
-
+/************ Reads buton output and sets it to the variable buttoN ********/
   digitalWrite(buttonOut, HIGH);
   buttoN = digitalRead(buttonIn);
 
+/***** Runs the temp() and mainFunc() functions *****/  
+  temp();
   mainFunc();
 
 }
 
+/******* Reads the temperature from the BME280 and converts it to Farenheight *******/
 void temp() {
+  
   float tempC;
   tempC = bme.readTemperature();
   tempF = map(tempC, -273.15, 1000.0, -459.67, 1832.0);
 
 }
 
+/**** Container for the Menu functions ****/
 void mainFunc() {
 
   currentMil = millis();
 
+/**** Every 200 ms the State of each function is checked to determine if they will output****/
   if (currentMil - lastMil >= Interval) {
+
+/**** Lights the NeoPixel Green if Automatic mode is on ****/
+/**** and Red if Automatic mode is off ****/
+    if(autO){
+      pixel.clear();
+      pixel.setBrightness(16);
+      pixel.fill(green,12,1);
+      pixel.show();
+    }
+    else{
+       pixel.clear();
+      pixel.setBrightness(16);
+      pixel.fill(red,12,1);
+      pixel.show();
+    }
+    
+/**** If the button is pressed, The counter increments by 1 ****/
+/**** The counter keeps track of which menu screen should be displayed ****/
     if (buttoN == HIGH) {
       counter++;
     }
-
+    
+    rtc();
     screen();
     menu();
     settings();
@@ -149,13 +169,18 @@ void mainFunc() {
   }
 }
 
+/**** Displays main screen on start up ****/
 void screen() {
+
+/**** Screen is initislly true so that it runs first ****/  
   if (screeN == true) {
     display.clearDisplay();
 
     display.setTextSize(1);             // Normal 1:1 pixel scale
     display.setTextColor(SSD1306_WHITE);        // Draw white text
     display.setCursor(0, 0);            // Start at top-left corner
+
+/**** Reads the time from the DS1307RTC and displays it on the OLED ****/
     if (tm.Hour < 12) {
       if (tm.Hour >= 0 && tm.Hour < 10) {
         if (tm.Minute >= 0 && tm.Minute < 10) {
@@ -170,12 +195,11 @@ void screen() {
       }
     }
     else if (tm.Hour >= 12) {
-
       if (tm.Minute >= 0 && tm.Minute < 10) {
-        display.printf("%i:0%i PM", tm.Hour - 20, tm.Minute + 1);
+        display.printf("%i:0%i PM", tm.Hour, tm.Minute + 1);
       }
       else {
-        display.printf("%i:%i PM", tm.Hour - 20, tm.Minute + 1);
+        display.printf("%i:%i PM", tm.Hour, tm.Minute + 1);
       }
     }
 
@@ -184,11 +208,13 @@ void screen() {
     display.setCursor(80, 0);           // Start at top-left corner
     display.printf("%i/%i/%i", tm.Month, tm.Day, tmYearToCalendar(tm.Year));
 
+/**** Displays the current Temperature ****/
     display.setTextSize(1);             // Normal 1:1 pixel scale
     display.setTextColor(SSD1306_WHITE);        // Draw white text
     display.setCursor(44, 12);            // Start at top-left corner
     display.printf("%0.2f F", tempF);
 
+/**** Displays the current Mode ****/
     if (autO == true) {
       display.setTextSize(1);             // Normal 1:1 pixel scale
       display.setTextColor(SSD1306_WHITE);        // Draw white text
@@ -203,6 +229,10 @@ void screen() {
     }
     display.display();
   }
+
+/**** If the button is pressed, the counter increments ****/
+/**** and the current function is set to false, Automatic mode ****/
+/**** is set to false and the Main Menu is set to true ****/  
   if (counter == 1) {
     autO = false;
     screeN = false;
@@ -212,11 +242,22 @@ void screen() {
   }
 }
 
+/**** Displays the Main Menu selections ****/
 void menu() {
+
+/**** If the button is pressed once, menU is set to true ****/
+/****  and screen is set to false so that the menu function ****/
+/**** can initialize. ****/
   if (menU == true) {
+
+/**** Assigns values to the different selections ****/
+/**** and maps the encoder to the selections ****/ 
     int Mode = 0;
     int Settings = 1;
     int Back = 2;
+
+/**** If the button has been pressed once, ****/
+/**** run proceeding code ****/
     if (counter == 1) {
       pos = myEnc.read();
       if (pos >= 96) {
@@ -228,6 +269,8 @@ void menu() {
       }
       mainSelect = map(pos, 0, 96, 0, 2);
 
+/**** If the encoder's position is equal to the value of a selection, ****/
+/**** the selection is highlighted on the OLED indicating it is selected ***/      
       if (Mode == mainSelect) {
         display.clearDisplay();
 
@@ -291,8 +334,11 @@ void menu() {
         display.display();
 
       }
-
     }
+
+/**** If the button is pressed twice and ****/
+/**** one of the selections is higlighted, ****/
+/**** run the proceeding code. ****/
     if (counter == 2) {
       if (Mode == mainSelect) {
         menU = false;
@@ -310,6 +356,9 @@ void menu() {
         display.clearDisplay();
         display.display();
       }
+
+/**** If back is selected, the OLED displays the previous ****/
+/**** screen and resets the values to their previous state ****/
       if (Back == mainSelect) {
         menU = false;
         screeN = true;
@@ -324,11 +373,22 @@ void menu() {
   }
 }
 
+/**** Displays the Settings menu ****/
 void settings() {
+
+/**** If the button is pressed twice and Settings is selected, ****/
+/**** settings is set to true  and menU is set to false ****/
+/**** so that the settings function can initialize. ****/
   if (settingS == true) {
+
+/**** Assigns values to the different selections ****/
+/**** and maps the encoder to the selections ****/ 
     int ThermoSet = 0;
     int SleepTime = 1;
     int Back = 2;
+    
+/**** If the button has been pressed twice, ****/
+/**** run proceeding code ****/
     if (counter == 2) {
       pos = myEnc.read();
       if (pos >= 96) {
@@ -340,6 +400,8 @@ void settings() {
       }
       mainSelect = map(pos, 0, 96, 0, 2);
 
+/**** If the encoder's position is equal to the value of a selection, ****/
+/**** the selection is highlighted on the OLED indicating it is selected ***/     
       if (ThermoSet == mainSelect) {
         display.clearDisplay();
 
@@ -405,6 +467,10 @@ void settings() {
       }
 
     }
+    
+/**** If the button is pressed three times and ****/
+/**** one of the selections is higlighted, ****/
+/**** run the proceeding code. ****/
     if (counter == 3) {
       if (ThermoSet == mainSelect) {
         settingS = false;
@@ -420,6 +486,9 @@ void settings() {
         display.clearDisplay();
         display.display();
       }
+
+/**** If back is selected, the OLED displays the Main Menu ****/
+/**** screen and resets the values to their previous state ****/      
       if (Back == mainSelect) {
         settingS = false;
         menU = true;
@@ -434,9 +503,21 @@ void settings() {
   }
 }
 
+/**** Displays the Thermostat Set Screen ****/
 void thermoset() {
+
+
+/**** If the button is pressed three times and thermoset is selected, ****/
+/**** thermoSet is set to true  and settings is set to false so that  ****/
+/**** the thermoset function can initialize. ****/
   if (thermoSet == true) {
+    
+/**** Assigns values to the different selections ****/
+/**** and maps the encoder to the selections ****/ 
     static int tempSet;
+
+/**** If the buttons has been pressed three times, ****/
+/**** runt the proceeding code. ****/    
     if (counter == 3) {
       pos = myEnc.read();
       if (pos >= 96) {
@@ -448,6 +529,8 @@ void thermoset() {
       }
       tempSet = map(pos, 0, 96, 60, 85);
 
+/**** The Encoder is set to a range between 60 degrees and ****/
+/**** 85 degrees. ****/
       display.clearDisplay();
 
       display.setTextSize(1);             // Normal 1:1 pixel scale
@@ -465,6 +548,10 @@ void thermoset() {
       display.display();
 
     }
+
+/**** Once the desired temperature is set by clicking the button, ****/
+/**** the selected temperature is displayed for a moment before the ****/
+/**** OLED returns to the previous menu. ****/
     if (counter == 4) {
       thermoTemp = tempSet;
       display.clearDisplay();
@@ -496,11 +583,22 @@ void thermoset() {
   }
 }
 
+/**** Displays the Sleep time set menu ****/
 void sleeptime() {
+
+/**** If the button is pressed three times and sleeptime is selected, ****/
+/**** sleepTime is set to true and settings is set to false so that  ****/
+/**** the sleeptime function can initialize. ****/  
   if (sleepTime == true) {
+
+/**** Assigns values to the different selections ****/
+/**** and maps the encoder to the selections ****/ 
     static int timeSet;
     int m;
     int s;
+
+/**** If the button has been pressed three times, ****/
+/**** run the poceeding code. ****/
     if (counter == 3) {
       pos = myEnc.read();
       if (pos >= 96) {
@@ -512,7 +610,8 @@ void sleeptime() {
       }
       timeSet = map(pos, 0, 96, 0, 600);
 
-
+/**** The Encoder is set to a range between 0degrees and ****/
+/**** 10 minutes. ****/
       if (timeSet / 60 < 1) {  //If the time is less than 60 seconds, set the interger m to zero
         m = 0;                //else set m to 1
       }
@@ -550,6 +649,10 @@ void sleeptime() {
 
 
     }
+
+/**** Once the desired Sleep time is set by clicking the button, ****/
+/**** the selected temperature is displayed for a moment before the ****/
+/**** OLED returns to the previous menu. ****/
     if (counter == 4) {
       setSleep = timeSet;
 
@@ -582,7 +685,7 @@ void sleeptime() {
       display.setTextColor(SSD1306_WHITE);  // Draw white text
       display.setCursor(34, 16);            // Start at top-left corner
       if (s < 10) {
-        display.printf("%i:0%i", m, s);
+        display.printf("%i:0%i", m, s); //Adds a leading zero
       } else {
         display.printf("%i:%i", m, s);
       }
@@ -602,8 +705,16 @@ void sleeptime() {
   }
 }
 
+/**** Displays the Mode menu ****/
 void mode() {
+
+/**** If the button is pressed twice and mode is selected, ****/
+/**** modE is set to true and menU is set to false so that  ****/
+/**** the mode function can initialize. ****/    
   if (modE == true) {
+
+/**** Assigns values to the different selections ****/
+/**** and maps the encoder to the selections ****/ 
     int Auto = 0;
     int BF = 1;
     int Night = 2;
@@ -611,6 +722,9 @@ void mode() {
     int Wemo = 4;
     int Thermo = 5;
     int Back = 6;
+
+/**** If the button has been pressed twice, ****/
+/**** run the proceeding code. ****/
     if (counter == 2) {
       pos = myEnc.read();
       if (pos >= 96) {
@@ -622,6 +736,8 @@ void mode() {
       }
       mainSelect = map(pos, 0, 96, 0, 6);
 
+/**** If the encoder's position is equal to the value of a selection, ****/
+/**** the selection is highlighted on the OLED indicating it is selected ***/   
       if (Auto == mainSelect) {
         display.clearDisplay();
 
@@ -760,6 +876,11 @@ void mode() {
 
       }
     }
+
+
+/**** If the button is pressed three times and ****/
+/**** one of the mmodes is higlighted, ****/
+/**** run the proceeding code. ****/    
     if (counter == 3) {
       if (Auto == mainSelect) {
         modE = false;
@@ -801,6 +922,10 @@ void mode() {
         display.clearDisplay();
         display.display();
       }
+
+
+/**** If back is selected, the OLED displays the Main Menu ****/
+/**** screen and resets the values to their previous state ****/       
       if (Back == mainSelect) {
         modE = false;
         menU = true;
@@ -814,10 +939,19 @@ void mode() {
   }
 }
 
+/**** Sets autO to true, runs the automatic function ****/
+/**** and retirns the OLED to the main screen. ****/
 void automatic() {
+
+/**** autO is intially true, and is set ****/
+/**** to false when the button is pressed. ****/
+/**** autO can be re-initialized from the Mode menu. ****/
   if (autO == true) {
+    screeN = true;
     static int i = 0;
 
+/**** Use the value of thermoTemp which is set in the settings menu ****/
+/**** to determine whether the fan should turn on. ****/
     if (tempF > thermoTemp + 1) {
       weMO.switchON(3);
     }
@@ -825,18 +959,20 @@ void automatic() {
       weMO.switchOFF(3);
     }
 
+/**** morning is intially true and auto is set to true ****/
+/**** on startup. morning runs a quick morning routine that  ****/
+/**** Brightens the lights and turns on the breakfast appliances. ****/
     if (morning == true) {
       unsigned int lastMill = 0;
       unsigned int currentMill;
       int sec = 1000;
       static int light;
-      
+
       weMO.switchON(1);
       weMO.switchON(2);
 
       currentMill = millis();
       if (currentMill - lastMill >= sec) {
-
 
         for (light = 1; light < 5; light++) {
           setHue(light, true, HueRainbow[2], i);
@@ -845,8 +981,25 @@ void automatic() {
 
         i = i + 16;
         lastMill = currentMill;
-      }
 
+/**** If the button is pressed, the cycle breaks ****/
+/**** and the OLED displays the Main Menu, setting ****/
+/**** autO and screeN to false while menU is set to true ****/
+        if(counter == 4){
+          autO = false;
+          screeN = false;
+          menU = true;
+          counter = 1;
+          pos = 0;
+          myEnc.write(0);
+          display.clearDisplay();
+          display.display();
+        }
+      }
+/**** once the sequence has run 16 times, ****/
+/**** the lights and appliances shut off ****/
+/**** and evening is set to true while morning ****/
+/**** is set to false. ****/
       if (i == 256) {
         for (light = 1; light < 5; light++) {
           setHue(light, false, HueRainbow[0], 0);
@@ -860,12 +1013,14 @@ void automatic() {
 
     }
 
+/**** evening runs a quick evening routine that  ****/
+/**** dims the lights and turns on the fan and lava lamp. ****/
     if (evening == true) {
       unsigned int lastMill;
       unsigned int currentMill;
       int sec = 1000;
       static int light;
-      
+
       weMO.switchON(0);
 
       currentMill = millis();
@@ -887,8 +1042,26 @@ void automatic() {
 
         i = i - 16;
         lastMill = currentMill;
+
+/**** If the button is pressed, the cycle breaks ****/
+/**** and the OLED displays the Main Menu, setting ****/
+/**** autO and screeN to false while menU is set to true ****/        
+        if(counter == 4){
+          autO = false;
+          screeN = false;
+          menU = true;
+          counter = 1;
+          pos = 0;
+          myEnc.write(0);
+          display.clearDisplay();
+          display.display();
+        }
       }
 
+/**** once the sequence has run 16 times, ****/
+/**** the lights and devices shut off ****/
+/**** and morning is set to true while evening ****/
+/**** is set to false. ****/
       if (i <= 0) {
         for (light = 1; light < 5; light++) {
           setHue(light, false, HueRainbow[0], 0);
@@ -902,7 +1075,13 @@ void automatic() {
   }
 }
 
+/**** Runs the Wakeup mode ****/
 void Wakeup() {
+
+
+/**** If the button is pressed three times and wakeup is selected, ****/
+/**** bF is set to true and modE is set to false so that  ****/
+/**** the Wakeup function can initialize. ****/    
   if (bF == true) {
     static unsigned int currentMill;
     static unsigned int lastMill;
@@ -912,8 +1091,12 @@ void Wakeup() {
 
     currentMill = millis();
 
+/**** If the buttons has been pressed three times, ****/
+/**** run the proceeding code. ****/
     if (counter == 3) {
 
+/**** Wakeup runs a quick morning routine that  ****/
+/**** Brightens the lights and turns on the breakfast appliances. ****/
       weMO.switchON(1);
       weMO.switchON(2);
       while (i < 256 ) {
@@ -952,6 +1135,11 @@ void Wakeup() {
         }
       }
 
+/**** once the sequence has run 16 times, ****/
+/**** the lights and appliances shut off ****/
+/**** and modE is set to true while bF ****/
+/**** is set to false. The OLED returns to the ****/
+/**** Mode menu. ****/
       if (i == 256) {
         for (Light = 1; Light < 5; Light++) {
           setHue(light, false, HueRainbow[0], 0);
@@ -971,7 +1159,12 @@ void Wakeup() {
   }
 }
 
+/**** Runs the goodnight function ****/
 void goodnight() {
+
+/**** If the button is pressed three times and goodnight is selected, ****/
+/**** nighT is set to true and modE is set to false so that  ****/
+/**** the goodnight function can initialize. ****/      
   if (nighT == true) {
     unsigned int currentMill;
     unsigned long lastMill;
@@ -979,9 +1172,12 @@ void goodnight() {
     static int i = 256;
     static int light;
 
-
+/**** If the buttons has been pressed three times, ****/
+/**** run the proceeding code. ****/
     if (counter == 3) {
 
+/**** goodnight runs a quick evening routine that  ****/
+/**** dims the lights and turns on the fan and lava lamp. ****/
       weMO.switchON(0);
       while (i  > 0 ) {
 
@@ -1019,6 +1215,11 @@ void goodnight() {
         }
       }
 
+/**** once the sequence has run 16 times, ****/
+/**** the lights and devices shut off ****/
+/**** and modE is set to true while nighT ****/
+/**** is set to false.The OLED returns to the ****/
+/**** Mode menu. ****/
       if (i == 0) {
         for (light = 1; light < 5; light++) {
           setHue(light, false, HueRainbow[0], 0);
@@ -1037,9 +1238,15 @@ void goodnight() {
   }
 }
 
+/**** Displays the light menu ****/
 void light() {
 
+/**** If the button is pressed three times and light is selected, ****/
+/**** lighT is set to true and modE is set to false so that  ****/
+/**** the light function can initialize. ****/     
   if (lighT == true) {
+
+/**** Defines the local variables ****/
     static int onOff;
     static int lightState;
     static int lightSelect;
@@ -1050,6 +1257,7 @@ void light() {
     static int hueColor;
     static int brightNess;
 
+/**** Maps the encoder to the number of lights ****/ 
     pos = myEnc.read();
     if (pos >= 96) {
       pos = 96;
@@ -1058,6 +1266,9 @@ void light() {
       pos = 0;
       myEnc.write(0);
     }
+
+/**** If the button has been pressed three times, ****/
+/**** run the proceeding code. ****/
     if (counter == 3) {
       lightSelect = map(pos, 0, 96, 1, 5);
 
@@ -1080,6 +1291,10 @@ void light() {
 
       display.display();
     }
+
+/**** Once the desired light(s) is set by clicking the button, ****/
+/**** the encoder is re-mapped to 0 - 1 so that the light can be ****/
+/**** turned on or off ****/
     if (counter == 4) {
       lightN = lightSelect;
       int On = 1;
@@ -1108,6 +1323,11 @@ void light() {
       display.display();
 
     }
+
+/**** Once the desired light state has been selected, ****/
+/**** the device checks it's status. If false, the selected light(s) ***/
+/**** are turned of and the OLED returns to the Mode menu. If ****/
+/**** true, the encoder is re-mapped to 0-6. ***/
     if (counter == 5) {
       lightState = onOff;
 
@@ -1173,6 +1393,8 @@ void light() {
       }
     }
 
+/**** Once the desired color has been selected, ****/
+/**** the encodeer is re-mapped to 0-255, ****/
     if (counter == 6) {
       hueColor = color;
 
@@ -1202,6 +1424,10 @@ void light() {
       display.display();
 
     }
+
+/**** Once the desired brightness has been selected, ****/
+/**** the selected lights turn on with the chosen color ****/
+/**** and intesity. The OLED then returns to the Mode menu. ****/
     if (counter == 7) {
       brightNess = intensity;
 
@@ -1251,13 +1477,21 @@ void light() {
   }
 }
 
+/**** Displays the Wemo menu ****/
 void Wemo() {
+
+/**** If the button is pressed three times and Wemo is selected, ****/
+/**** wemO is set to true and modE is set to false so that  ****/
+/**** the Wemo function can initialize. ****/     
   if (wemO == true) {
+
+/**** Defines the local variables ****/
     static int wemoSelect;
     static int onOff;
     static int wemoState;
     static int i;
 
+/**** Maps the encoder to 0-4 (the number of Wemo outlets) ****/
     pos = myEnc.read();
     if (pos >= 96) {
       pos = 96;
@@ -1288,6 +1522,10 @@ void Wemo() {
 
       display.display();
     }
+
+/**** When the selected Wemo(s) is selected, ****/
+/**** the encoder is re-mapped to 0-1 to select the ****/
+/**** wemo state. ****/
     if (counter == 4) {
       int On = 1;
       int OfF = 0;
@@ -1313,6 +1551,10 @@ void Wemo() {
       }
       display.display();
     }
+
+/**** Once the Wemo state has been set, ****/
+/**** the Wemo will either turn on or off ***/
+/**** and the OLED will return to the Mode menu. ****/
     if (counter == 5) {
       wemoState = onOff;
 
@@ -1349,13 +1591,24 @@ void Wemo() {
   }
 }
 
+/**** Displays the thermostat menu ****/
 void thermoStat() {
+
+/**** If the button is pressed three times and thermostat is selected, ****/
+/**** thermO is set to true and modE is set to false so that  ****/
+/**** the thermoStat function can initialize. ****/     
   if (thermO == true) {
+
+/**** Defines the local variables ****/
     static int thermoset;
     static int setTemp;
-    static int p = 0;
+
+/**** If the button has been pressed three times, ****/
+/**** run the proceeding code. ****/
     if (counter == 3) {
 
+/**** Maps the encoder to a range of 60 degrees ****/
+/**** to 80 degrees. ****/
       pos = myEnc.read();
       if (pos >= 96) {
         pos = 96;
@@ -1383,6 +1636,12 @@ void thermoStat() {
       display.display();
 
     }
+
+/**** Once the temperature has been set, ****/
+/**** the OLED will display the selected ****/
+/**** temperature and then attempt to keep ****/
+/**** the room within a 1 degree range of ****/
+/**** set temperature. ****/
     if (counter == 4) {
       thermoset = setTemp;
       if (p == 0) {
@@ -1412,21 +1671,25 @@ void thermoStat() {
         weMO.switchOFF(3);
       }
     }
+
+/**** If the button is pressed, ****/
+/**** it will stop the function ****/
+/**** from running and return the ****/
+/**** OLED to the Mode Menu. ****/
     if (counter == 5) {
       thermO = false;
       modE = true;
       counter = 2;
+      p = 0;
       pos = 0;
       myEnc.write(0);
       display.clearDisplay();
       display.display();
-
     }
-
   }
 }
 
+/**** Initializes the RTC object ****/
 void rtc() {
   RTC.read(tm);
-
 }
